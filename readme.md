@@ -111,8 +111,42 @@ impl xyzClient {
    }
    ```
 
+### testing
+
+- Run example to ensure proper working:
+
+```bash
+cargo run --example file_name # for example main
+```
+
+- run build
+
+```bash
+cargo build --release
+```
+
+- run tests
+
+```bash
+cargo test
+```
+
+- get documentation
+
+```bash
+cargo doc --open --release
+```
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request.
 
 ## License
+
+```
+
+```
+
+```
+
+```
