@@ -1,0 +1,9 @@
+[package]
+name = "ai_rs"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+dotenv = "0.15.0"
+env_logger = "0.11.5"
+log = "0.4.22"
