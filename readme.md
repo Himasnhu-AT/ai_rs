@@ -116,7 +116,7 @@ impl xyzClient {
 - Run example to ensure proper working:
 
 ```bash
-cargo run --example file_name # for example main
+cargo run --example file_name # for example main, ollama, gemini
 ```
 
 - run build

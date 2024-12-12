@@ -1,9 +1,10 @@
 pub mod gemini;
+pub mod ollama;
 
 pub use gemini::GeminiClient;
+pub use ollama::OllamaClient;
 
 use dotenv::dotenv;
-use std::env;
 
 pub fn init_logging() {
     dotenv().ok();

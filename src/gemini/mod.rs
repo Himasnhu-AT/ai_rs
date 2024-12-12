@@ -1,5 +1,6 @@
-use log::{debug, error, info};
+use log::{debug, info};
 
+#[allow(dead_code)]
 pub struct GeminiClient {
     api_key: String,
     model: String,
