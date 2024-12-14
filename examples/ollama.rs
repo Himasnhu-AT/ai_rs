@@ -16,14 +16,19 @@ async fn ollama() {
 
     // List models
     match ollama.list_models().await {
-        Ok(response) => println!("Available models: {:?}", response.models.len()),
+        Ok(response) => {
+            println!("Available models:");
+            for model in response.models {
+                println!("- {}", model.name);
+            }
+        }
         Err(e) => eprintln!("Error listing models: {}", e),
     }
 
     // Show model info for llama3.2:1b
     match ollama.show_model_info(MODEL).await {
         #[allow(unused_variables)]
-        Ok(model_info) => println!("Recieved Model info"),
+        Ok(model_info) => println!("Received Model info"),
         Err(e) => eprintln!("Error showing model info: {}", e),
     }
 
@@ -43,7 +48,7 @@ async fn ollama() {
 
 fn main() {
     // uncomment to not get logs
-    init_logging();
+    // init_logging();
 
     // Create a new Tokio runtime to run the async ollama function
     let rt = Runtime::new().unwrap();

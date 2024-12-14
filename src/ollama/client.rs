@@ -5,11 +5,14 @@ use serde::de::Error as SerdeError;
 use serde_json::{json, Value};
 use std::fmt;
 
-// Custom error type to handle different error scenarios
+/// Custom error type to handle different error scenarios
 #[derive(Debug)]
 pub enum OllamaClientError {
+    /// Error related to the request
     RequestError(String),
+    /// Network-related error
     NetworkError(reqwest::Error),
+    /// Error while parsing JSON
     ParseError(serde_json::Error),
 }
 
@@ -37,6 +40,7 @@ impl From<serde_json::Error> for OllamaClientError {
     }
 }
 
+/// Client for interacting with the Ollama API
 #[derive(Debug)]
 pub struct OllamaClient {
     base_url: String,
@@ -45,6 +49,16 @@ pub struct OllamaClient {
 }
 
 impl OllamaClient {
+    /// Creates a new instance of `OllamaClient`
+    ///
+    /// # Arguments
+    ///
+    /// * `base_url` - The base URL of the Ollama API
+    /// * `api_key` - The API key for authentication
+    ///
+    /// # Returns
+    ///
+    /// A new `OllamaClient` instance
     pub fn new(base_url: &str, api_key: &str) -> Self {
         info!("Creating new OllamaClient with base_url: {}", base_url);
         OllamaClient {
@@ -54,6 +68,11 @@ impl OllamaClient {
         }
     }
 
+    /// Checks if the Ollama service is active
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing `true` if the service is active, or an `OllamaClientError` otherwise
     pub async fn active(&self) -> Result<bool, OllamaClientError> {
         let url = format!("{}", self.base_url);
         info!("Checking if the service is active at URL: {}", url);
@@ -73,6 +92,15 @@ impl OllamaClient {
         }
     }
 
+    /// Generates a completion based on the provided request
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The `GenerateRequest` containing the model and prompt
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the `GenerateResponse` or an `OllamaClientError`
     pub async fn generate_completion(
         &self,
         request: GenerateRequest,
@@ -136,6 +164,11 @@ impl OllamaClient {
         }
     }
 
+    /// Lists available models
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the `ListModelsResponse` or an `OllamaClientError`
     pub async fn list_models(&self) -> Result<ListModelsResponse, OllamaClientError> {
         let url = format!("{}/api/tags", self.base_url);
         info!("Listing models with URL: {}", url);
@@ -158,6 +191,17 @@ impl OllamaClient {
         }
     }
 
+    /// Shows information about a specific model
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The name of the model
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the model information as `serde_json::Value` or an `OllamaClientError`
+    ///
+    /// Use .response to get output sent by llm
     pub async fn show_model_info(&self, model: &str) -> Result<Value, OllamaClientError> {
         let url = format!("{}/api/show", self.base_url);
         info!("Showing model info for model: {} with URL: {}", model, url);
