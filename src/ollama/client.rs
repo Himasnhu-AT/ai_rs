@@ -1,6 +1,8 @@
-use crate::ollama::types::{GenerateRequest, GenerateResponse, ListModelsResponse, ModelInfo};
-use log::error;
+use crate::ollama::types::{GenerateRequest, GenerateResponse, ListModelsResponse};
+use log::{debug, error, info, warn};
 use reqwest::Client;
+use serde::de::Error as SerdeError;
+use serde_json::{json, Value};
 use std::fmt;
 
 // Custom error type to handle different error scenarios
@@ -44,6 +46,7 @@ pub struct OllamaClient {
 
 impl OllamaClient {
     pub fn new(base_url: &str, api_key: &str) -> Self {
+        info!("Creating new OllamaClient with base_url: {}", base_url);
         OllamaClient {
             base_url: base_url.to_string(),
             api_key: api_key.to_string(),
@@ -53,6 +56,7 @@ impl OllamaClient {
 
     pub async fn active(&self) -> Result<bool, OllamaClientError> {
         let url = format!("{}", self.base_url);
+        info!("Checking if the service is active at URL: {}", url);
         let response = self
             .client
             .get(&url)
@@ -61,8 +65,10 @@ impl OllamaClient {
             .await?;
 
         if response.status().is_success() {
+            info!("Service is active.");
             Ok(true)
         } else {
+            warn!("Service is not active. Status: {}", response.status());
             Ok(false)
         }
     }
@@ -72,17 +78,57 @@ impl OllamaClient {
         request: GenerateRequest,
     ) -> Result<GenerateResponse, OllamaClientError> {
         let url = format!("{}/api/generate", self.base_url);
+        info!("Generating completion with URL: {}", url);
+        debug!("GenerateRequest: {:?}", request);
+
+        // Build the JSON request body conditionally
+        let mut json_body = json!({
+            "model": request.model,
+            "prompt": request.prompt,
+        });
+
+        if let Some(stream) = request.stream {
+            json_body["stream"] = json!(stream);
+        }
+
+        if let Some(options) = request.options {
+            json_body["options"] = options;
+        }
+
+        debug!("Sending body: {:?}", json_body.to_string());
+
         let response = self
             .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
-            .json(&request)
+            .json(&json_body)
             .send()
             .await?;
 
         if response.status().is_success() {
-            let generate_response: GenerateResponse = response.json().await?;
-            Ok(generate_response)
+            let response_text = response.text().await?;
+            debug!("text response received: {:?}", response_text);
+
+            // Split the response text by newlines and parse each JSON object
+            let mut final_response: Option<GenerateResponse> = None;
+            for line in response_text.lines() {
+                let generate_response: GenerateResponse = serde_json::from_str(line)?;
+                if let Some(ref mut existing_response) = final_response {
+                    existing_response.merge(generate_response);
+                } else {
+                    final_response = Some(generate_response);
+                }
+            }
+
+            if let Some(generate_response) = final_response {
+                info!("Successfully generated completion.");
+                debug!("GenerateResponse: {:?}", generate_response);
+                Ok(generate_response)
+            } else {
+                Err(OllamaClientError::ParseError(SerdeError::custom(
+                    "No valid JSON objects found in response",
+                )))
+            }
         } else {
             let error_message = response.text().await?;
             error!("Failed to generate completion: {}", error_message);
@@ -92,6 +138,7 @@ impl OllamaClient {
 
     pub async fn list_models(&self) -> Result<ListModelsResponse, OllamaClientError> {
         let url = format!("{}/api/tags", self.base_url);
+        info!("Listing models with URL: {}", url);
         let response = self
             .client
             .get(&url)
@@ -101,6 +148,8 @@ impl OllamaClient {
 
         if response.status().is_success() {
             let list_models_response: ListModelsResponse = response.json().await?;
+            info!("Successfully listed models.");
+            debug!("ListModelsResponse: {:?}", list_models_response);
             Ok(list_models_response)
         } else {
             let error_message = response.text().await?;
@@ -109,8 +158,9 @@ impl OllamaClient {
         }
     }
 
-    pub async fn show_model_info(&self, model: &str) -> Result<ModelInfo, OllamaClientError> {
+    pub async fn show_model_info(&self, model: &str) -> Result<Value, OllamaClientError> {
         let url = format!("{}/api/show", self.base_url);
+        info!("Showing model info for model: {} with URL: {}", model, url);
         let response = self
             .client
             .post(&url)
@@ -120,7 +170,11 @@ impl OllamaClient {
             .await?;
 
         if response.status().is_success() {
-            let model_info: ModelInfo = response.json().await?;
+            let response_text = response.text().await?;
+            debug!("Received Response for show_model_info: {}", response_text);
+            let model_info: Value = serde_json::from_str(&response_text)?;
+            info!("Successfully retrieved model info.");
+            debug!("ModelInfo: {:?}", model_info);
             Ok(model_info)
         } else {
             let error_message = response.text().await?;
