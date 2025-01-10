@@ -7,8 +7,8 @@ authors = ["Himanshu <hyattherate2005@gmail.com>"]
 homepage = "https://github.com/Himasnhu-AT/ai_rs/blob/master/Readme.md"
 readme = "readme.md"
 repository = "https://github.com/Himasnhu-AT/ai_rs.git"
-keywords = ["ai", "ai sdk", "gemini", "ollama"]
-categories = ["API bindings", "Development tools"]
+keywords = ["ai", "ai_sdk", "gemini", "ollama"]
+categories = ["api-bindings", "development-tools"]
 license-file = "LICENSE"
 
 [dependencies]
