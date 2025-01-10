@@ -1,7 +1,15 @@
 [package]
 name = "ai_rs"
+description = "One sdk for all AI platforms"
 version = "0.0.1"
 edition = "2021"
+authors = ["Himanshu <hyattherate2005@gmail.com>"]
+homepage = "https://github.com/Himasnhu-AT/ai_rs/blob/master/Readme.md"
+readme = "readme.md"
+repository = "https://github.com/Himasnhu-AT/ai_rs.git"
+keywords = ["ai", "ai sdk", "gemini", "ollama"]
+categories = ["API bindings", "Development tools"]
+license-file = "LICENSE"
 
 [dependencies]
 dotenv = "0.15.0"
