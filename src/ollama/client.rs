@@ -4,6 +4,13 @@ use reqwest::Client;
 use serde::de::Error as SerdeError;
 use serde_json::{json, Value};
 use std::fmt;
+use futures_util::{Stream, StreamExt};
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use bytes::Bytes;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+use std::sync::Arc;
 
 /// Custom error type to handle different error scenarios
 #[derive(Debug)]
@@ -162,6 +169,109 @@ impl OllamaClient {
             error!("Failed to generate completion: {}", error_message);
             Err(OllamaClientError::RequestError(error_message))
         }
+    }
+
+    /// Streams a completion response chunk by chunk based on the provided request
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The `GenerateRequest` containing the model and prompt
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a Stream of `GenerateResponse` chunks or an `OllamaClientError`
+    pub async fn stream_completion(
+        &self,
+        mut request: GenerateRequest,
+    ) -> Result<impl Stream<Item = Result<GenerateResponse, OllamaClientError>>, OllamaClientError> {
+        // Force streaming to be enabled
+        request.stream = Some(true);
+        
+        let url = format!("{}/api/generate", self.base_url);
+        info!("Streaming completion with URL: {}", url);
+        debug!("StreamRequest: {:?}", request);
+        
+        // Build the JSON request body conditionally
+        let mut json_body = json!({
+            "model": request.model,
+            "prompt": request.prompt,
+            "stream": true,
+        });
+        
+        if let Some(options) = request.options {
+            json_body["options"] = options;
+        }
+        
+        debug!("Sending body: {:?}", json_body.to_string());
+        
+        let auth_header = format!("Bearer {}", self.api_key);
+        let client = self.client.clone();
+        
+        // Create a response stream
+        let response = client
+            .post(&url)
+            .header("Authorization", auth_header)
+            .json(&json_body)
+            .send()
+            .await?;
+            
+        if !response.status().is_success() {
+            let error_message = response.text().await?;
+            error!("Failed to stream completion: {}", error_message);
+            return Err(OllamaClientError::RequestError(error_message));
+        }
+        
+        // Create a channel for passing chunks
+        let (tx, rx) = mpsc::channel(32);
+        let tx = Arc::new(tx);
+        
+        // Create a stream from the response
+        let stream = response.bytes_stream();
+        
+        // Spawn a task to process the stream
+        tokio::spawn(async move {
+            let mut stream = stream;
+            
+            while let Some(chunk_result) = stream.next().await {
+                match chunk_result {
+                    Ok(chunk) => {
+                        // Process each line in the chunk
+                        if let Ok(chunk_str) = String::from_utf8(chunk.to_vec()) {
+                            for line in chunk_str.lines() {
+                                if line.is_empty() {
+                                    continue;
+                                }
+                                
+                                match serde_json::from_str::<GenerateResponse>(line) {
+                                    Ok(response) => {
+                                        let tx = Arc::clone(&tx);
+                                        if tx.send(Ok(response)).await.is_err() {
+                                            // Receiver dropped, exit the loop
+                                            break;
+                                        }
+                                    }
+                                    Err(e) => {
+                                        let tx = Arc::clone(&tx);
+                                        if tx.send(Err(OllamaClientError::ParseError(e))).await.is_err() {
+                                            // Receiver dropped, exit the loop
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        let tx = Arc::clone(&tx);
+                        let _ = tx.send(Err(OllamaClientError::NetworkError(e))).await;
+                        break;
+                    }
+                }
+            }
+        });
+        
+        // Return the receiver as a stream
+        Ok(ReceiverStream::new(rx))
     }
 
     /// Lists available models

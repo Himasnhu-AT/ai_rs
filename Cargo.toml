@@ -15,10 +15,13 @@ license-file = "LICENSE"
 dotenv = "0.15.0"
 env_logger = "0.11.5"
 log = "0.4.22"
-reqwest = { version = "0.12.9", features = ["json"] }
+reqwest = { version = "0.12.9", features = ["json", "stream"] }
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.133"
 tokio = { version = "1.43.1", features = ["full"] }
+futures-util = "0.3.30"
+bytes = "1.5.0"
+tokio-stream = "0.1.14"
 
 [dev-dependencies]
 mockito = "1.6.1"
