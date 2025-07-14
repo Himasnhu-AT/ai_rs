@@ -21,18 +21,116 @@ ai_rs = "0.0.1"
 
 ### Example
 
-Here's an example of how to use the `ai_rs` library with the `GeminiClient` and `xyzClient`:
+Here's an example of how to use the `ai_rs` library with the `GeminiClient`:
 
 ```rust
 use ai_rs::{init_logging, GeminiClient};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     init_logging();
 
-    let gemini_ai = GeminiClient::setup("your_api_key").model("gemini-1.5-pro");
-    let gemini_response = gemini_ai.generate_content("Hello, Gemini!");
-    println!("{}", gemini_response);
+    let api_key = std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
+    let gemini_ai = GeminiClient::new(&api_key, "gemini-1.5-pro");
+
+    match gemini_ai.generate_content("Hello, Gemini!").await {
+        Ok(response) => {
+            if let Some(text) = response.get_text() {
+                println!("{}", text);
+            } else {
+                println!("No response generated");
+            }
+        }
+        Err(e) => println!("Error: {}", e),
+    }
 }
+```
+
+### Gemini API Support
+
+The library provides comprehensive support for Google's Gemini API with the following features:
+
+#### Basic Usage
+
+```rust
+use ai_rs::{GeminiClient, GenerationConfig};
+
+let client = GeminiClient::new("your_api_key", "gemini-1.5-pro");
+
+// Simple text generation
+let response = client.generate_content("Tell me a joke").await?;
+if let Some(text) = response.get_text() {
+    println!("{}", text);
+}
+```
+
+#### Advanced Configuration
+
+```rust
+let config = GenerationConfig {
+    temperature: Some(0.7),
+    max_output_tokens: Some(100),
+    top_p: Some(0.8),
+    top_k: Some(40),
+    candidate_count: None,
+    stop_sequences: None,
+};
+
+let response = client.generate_content_with_config("Write a haiku", config).await?;
+```
+
+#### Streaming Support
+
+```rust
+use futures_util::StreamExt;
+
+let mut stream = client.stream_content("Count from 1 to 5").await?;
+while let Some(result) = stream.next().await {
+    match result {
+        Ok(chunk) => {
+            if let Some(text) = chunk.get_text() {
+                print!("{}", text);
+            }
+        }
+        Err(e) => println!("Stream error: {}", e),
+    }
+}
+```
+
+#### Structured Requests
+
+```rust
+use ai_rs::{GenerateContentRequest, Content, Part};
+
+let request = GenerateContentRequest {
+    contents: vec![Content {
+        role: "user".to_string(),
+        parts: vec![Part {
+            text: Some("Explain quantum computing".to_string()),
+            inline_data: None,
+        }],
+    }],
+    generation_config: Some(config),
+    safety_settings: None,
+    tools: None,
+};
+
+let response = client.generate_content_with_request(request).await?;
+```
+
+#### Environment Setup
+
+Set your Gemini API key as an environment variable:
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+```
+
+Or create a `.env` file:
+
+```
+GEMINI_API_KEY=your_api_key_here
+RUST_LOG=info
 ```
 
 ### Logging
