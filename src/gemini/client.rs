@@ -3,13 +3,9 @@ use crate::gemini::types::{
     StreamGenerateContentResponse,
 };
 use futures_util::{Stream, StreamExt};
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use reqwest::Client;
-use serde::de::Error as SerdeError;
-use serde_json::json;
 use std::fmt;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 

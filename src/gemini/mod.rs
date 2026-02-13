@@ -1,4 +1,3 @@
-use log::{debug, info};
 
 pub mod client;
 pub mod types;

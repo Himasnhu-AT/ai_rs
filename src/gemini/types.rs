@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Request structure for generating content with Gemini
 #[derive(Debug, Serialize, Deserialize)]
