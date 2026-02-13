@@ -68,10 +68,14 @@ impl OllamaClient {
     /// A new `OllamaClient` instance
     pub fn new(base_url: &str, api_key: &str) -> Self {
         info!("Creating new OllamaClient with base_url: {}", base_url);
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .expect("Failed to build reqwest client");
         OllamaClient {
             base_url: base_url.to_string(),
             api_key: api_key.to_string(),
-            client: Client::new(),
+            client,
         }
     }
 
